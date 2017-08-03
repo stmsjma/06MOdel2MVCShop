@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+		PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--	
+	InventoryMapper.xml :: SQL 를 갖는 MetaData 
+	
+	- MyBatis Framework 은 XML MetaData 를 사용 SQL구문을 관리
+	  (SQL은 xml 을 통해 적절히 캡슐화 되어 애플리케이선 외부로 분리함)
+	- SQL문의 입력(?) / 출력(?)을 매핑한다.  <== 아래의 select element 참조
+ -->		
+
+<mapper namespace="InventoryMapper">
+
+	<resultMap id="inventorySelectMap" type="inventory">
+		<result property="inventoryNo" 					column="INVENTORY_NO" 		 				jdbcType="NUMERIC"/>
+  		<result property="product.prodNo" 				column="PROD_NO" 		 					jdbcType="NUMERIC"/>
+  		<result property="wareHouse.warehouse_code"     column="WAREHOUSE_CODE" 		 			jdbcType="VARCHAR"/>
+  		<result property="product.prodName"     		column="PROD_NAME" 		 					jdbcType="VARCHAR"/>
+ 		<result property="inQuanity" 					column="in_quantity" 			 			jdbcType="NUMERIC"/>
+  		<result property="inDate" 						column="in_date"		 					jdbcType="DATE"/>
+  		<result property="outQuanity" 					column="out_quanity"			 			jdbcType="NUMERIC"/>
+  		<result property="outDate" 	 					column="out_date" 	 	 					jdbcType="DATE"/>
+  		<result property="inventoryQuanity"				column="inventory_quanity"		 	 		jdbcType="NUMERIC"/>
+	</resultMap>
+
+  	<insert id="addInventory" 	 parameterType="inventory">
+ 		INSERT INTO inventory(inventory_no, prod_no, warehouse_code, prod_name, in_quantity, 
+					    in_date,out_quanity, out_date, inventory_quanity)
+		VALUES    		(seq_inventory_no.nextval,
+					 	#{product.prodNo:INTEGER},
+						#{wareHouse.warehouse_code:VARCHAR},
+						#{product.prodName:VARCHAR},
+						#{inQuanity:INTEGER},
+						SYSDATE,
+						#{outQuanity:INTEGER},
+						SYSDATE,
+						#{inventoryQuanity:INTEGER})
+						
+						
+  	</insert>
+  	
+  		
+  	<select 	id="getInventory" 	parameterType="int" resultMap="inventorySelectMap" >
+  		SELECT 
+  		i.*, w.*, p.*
+  		FROM  inventory i, warehouse w, product p 
+  		WHERE  inventory_no= #{value}
+ 		AND  i.prod_no=p.prod_no AND w.warehouse_code=i.warehouse_code
+  	</select>
+  	
+  	  	
+  	<update    id="updateInventory" parameterType="inventory">
+  		UPDATE inventory
+  		<set>
+  			<if test="outQuanity != null">	      		  OUT_QUANITY   	   = #{outQuanity},	 				</if>
+  			<if test="inventoryQuanity != null">          INVENTORY_QUANITY    = #{inventoryQuanity}            </if>
+		</set>
+		WHERE prod_no = #{product.prodNo}	
+ 	</update>
+  
+ 	<!-- SQL : SELECT LIST <seach property error occurred ===>>> root cause confirm -->
+	<select id="getInventoryList" parameterType="search" resultMap="inventorySelectMap">
+	  		SELECT *
+	  		FROM ( SELECT inner_table.*, ROWNUM AS row_seq
+	  						<if test="pageSize != null">
+	  						FROM ( SELECT i.inventory_no, i.prod_no, w.warehouse_location,
+								   p.prod_name,i.in_quantity,i.in_date, i.out_quanity,i.out_date,
+								   p.price, i.inventory_quanity  from PRODUCT p, INVENTORY i, WAREHOUSE w 
+								   where p.prod_no = i.prod_no(+) and 
+								   w.warehouse_code = i.warehouse_code) 
+							</if>	inner_table
+	  						WHERE ROWNUM <![CDATA[<=]]> #{currentPage}*#{pageSize} )
+	  		WHERE row_seq BETWEEN (#{currentPage}-1)*#{pageSize}+1
+	  		AND #{currentPage}*#{pageSize}
+	</select>
+	
+			
+	<!-- SQL : SELECT LIST -->
+	<select id="extractInventory" parameterType="map" resultMap="inventorySelectMap">
+			SELECT *
+	  		FROM ( SELECT inner_table.*, ROWNUM AS row_seq
+	  						FROM ( SELECT * from inventory WHERE  prod_no = #{inventory.product.prodNo}) inner_table
+	  						WHERE ROWNUM <![CDATA[<=]]> #{search.currentPage}*#{search.pageSize} )
+	  		WHERE row_seq BETWEEN (#{search.currentPage}-1)*#{search.pageSize}+1
+	  		AND #{search.currentPage}*#{search.pageSize}
+	</select>
+	
+	<!-- SQL : SELECT ROW Count -->	 
+	 <select  id="getTotalCount"  parameterType="map"	 resultType="int">
+	  	SELECT count(*)
+  		FROM (SELECT 	i.inventory_no, i.prod_no, w.warehouse_location,
+					 	p.prod_name,i.in_quantity,i.in_date, i.out_quanity,i.out_date,
+					 	p.price, i.inventory_quanity  from PRODUCT p, INVENTORY i, WAREHOUSE w 
+			  WHERE  	p.prod_no = i.prod_no(+) and 
+				     	w.warehouse_code = i.warehouse_code    							 
+			  ORDER BY  i.inventory_no ) inner_table
+	  </select>
+	
+	
+ </mapper>
