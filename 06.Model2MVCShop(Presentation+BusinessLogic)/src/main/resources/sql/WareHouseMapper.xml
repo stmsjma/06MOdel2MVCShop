@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+		PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="WareHouseMapper">
+	<resultMap id="warehouseSelectMap" 					type="warehouse">
+		<result property="warehouse_code" 				column="WAREHOUSE_CODE" 			jdbcType="VARCHAR"/>
+		<result property="warehouse_usage"				column="WAREHOUSE_USAGE" 			jdbcType="VARCHAR" />
+		<result property="warehouse_telno" 				column="WAREHOUSE_TELNO" 			jdbcType="VARCHAR" />
+		<result property="warehouse_occupation_rate" 	column="WAREHOUSE_OCCUPATION_RATE" 	jdbcType="NUMERIC" />
+	</resultMap>
+</mapper>
+

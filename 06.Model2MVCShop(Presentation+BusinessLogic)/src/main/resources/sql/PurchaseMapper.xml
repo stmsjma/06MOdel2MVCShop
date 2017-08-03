@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+		PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--	
+	UserMapper.xml :: SQL 를 갖는 MetaData 
+	
+	- MyBatis Framework 은 XML MetaData 를 사용 SQL구문을 관리
+	  (SQL은 xml 을 통해 적절히 캡슐화 되어 애플리케이선 외부로 분리함)
+	- SQL문의 입력(?) / 출력(?)을 매핑한다.  <== 아래의 select element 참조
+ -->		
+
+ <mapper namespace="PurchaseMapper">
+  	<resultMap id ="purchaseSelectMap" type="purchase">
+  		<result property="divyAddr" 				column="demailaddr" 		 jdbcType="VARCHAR"/>
+  		<result property="divyDate" 			 	column="dlvy_date" 			 jdbcType="DATE"/>
+  		<result property="divyRequest" 				column="dlvy_request"		 jdbcType="VARCHAR"/>
+  		<result property="orderDate" 				column="order_data"			 jdbcType="DATE"/>
+  		<result property="paymentOption" 	 		column="payment_option" 	 jdbcType="CHAR"/>
+  		<result property="receiverName"		 		column="receiver_name"		 jdbcType="VARCHAR"/>
+  		<result property="receiverPhone"		 	column="receiver_phone"		 jdbcType="VARCHAR"/>
+  		<result property="tranCode"		  			column="tran_status_code"	 jdbcType="CHAR"/>
+  		<result property="tranNo"		  			column="tran_no"			 jdbcType="NUMERIC"/>
+		<association property="buyer"				resultMap="UserMapper.userSelectMap"/>
+		<association property="purchaseProd"		resultMap="ProductMapper.productSelectMap"/>
+		
+  	</resultMap>	
+ 
+	
+  	<insert 	id="addPurchase" 	 parameterType="purchase">
+  		INSERT
+		INTO transaction(tran_no, prod_no, buyer_id, payment_option, receiver_name, receiver_phone, demailaddr, dlvy_request, 
+						 tran_status_code, order_data, dlvy_date)
+		VALUES (  seq_transaction_tran_no.nextval,
+				 	#{purchaseProd.prodNo:INTEGER},
+					#{buyer.userId:VARCHAR},
+					#{paymentOption:CHAR},
+					#{receiverName:VARCHAR},
+					#{receiverPhone:VARCHAR},
+					#{divyAddr:VARCHAR},
+					#{divyRequest:VARCHAR},
+					#{tranCode:CHAR},
+					SYSDATE,
+					#{divyDate:DATE})
+  	</insert>
+  	
+  	<select 	id="getPurchase" 	parameterType="int" resultMap="purchaseSelectMap" >
+  		SELECT 
+  		t.*, p.*, u.* 
+  		FROM  transaction t, product p, users u 
+  		WHERE  t.tran_no= #{tranNo}
+ 		AND t.prod_no=p.prod_no AND t.buyer_id=u.user_id
+  	</select>
+  	
+   	
+  	<update    id="updatePurchase" parameterType="purchase">
+  		UPDATE transaction
+  		<set>
+  			<if test="paymentOption != null">	      PAYMENT_OPTION   = #{paymentOption},	 </if>
+  			<if test="receiverName != null">          RECEIVER_NAME    = #{receiverName},    </if>
+			<if test="receiverPhone != null">         RECEIVER_PHONE   = #{receiverPhone},	 </if>
+			<if test="divyAddr != null">       	  	  DEMAILADDR  	   = #{divyAddr},		 </if>
+			<if test="divyRequest != null">       	  DLVY_REQUEST     = #{divyRequest},	 </if>
+			<if test="divyDate != null">       	  	  DLVY_DATE    	   = #{divyDate:DATE}	 </if>
+		</set>
+		WHERE TRAN_NO = #{tranNo}	
+  	</update>
+  	
+  	<update    id="updateTranCode" parameterType="purchase">
+  		UPDATE transaction
+  		<set>
+  			<if test="tranCode == 002">	          	  TRAN_STATUS_CODE  = 003,	 			  </if>
+  			<if test="tranCode == 003">          	  TRAN_STATUS_CODE  = 004   			  </if>
+		</set>
+		WHERE TRAN_NO = #{tranNo}	
+  	</update>
+ 
+ 	<!-- SQL : SELECT LIST -->
+	<select id="getPurchaseList" parameterType="map" resultMap="purchaseSelectMap">
+	  		SELECT *
+	  		FROM ( SELECT inner_table.*, ROWNUM AS row_seq
+	  						FROM ( SELECT t.*, p.prod_name, u.* FROM  transaction t, product p , users u   
+			<if	test="buyerId != null">		WHERE buyer_id = #{buyerId} </if>
+											and t.prod_no = p.prod_no 
+											and u.user_id = t.buyer_id			
+											ORDER BY t.tran_no) inner_table
+	  						WHERE ROWNUM <![CDATA[<=]]> #{search.currentPage}*#{search.pageSize} )
+	  		WHERE row_seq BETWEEN (#{search.currentPage}-1)*#{search.pageSize}+1
+	  		AND #{search.currentPage}*#{search.pageSize}
+	</select>
+
+	<!-- SQL : SELECT LIST -->
+	<select id="getSaleList" parameterType="map" resultMap="purchaseSelectMap">
+			SELECT *
+	  		FROM ( SELECT inner_table.*, ROWNUM AS row_seq
+	  						FROM ( SELECT t.*, p.*, u.*
+											FROM transaction t, product p, users u  
+											WHERE t.prod_no = p.prod_no  
+											AND t.buyer_id = u.user_id      
+			<if	test="buyerId != null">		AND u.user_id = #{buyerId} 									</if>  					
+											ORDER BY tran_no  ) inner_table
+	  						WHERE ROWNUM <![CDATA[<=]]> #{search.currentPage}*#{search.pageSize} )
+	  		WHERE row_seq BETWEEN (#{search.currentPage}-1)*#{search.pageSize}+1
+	  		AND #{search.currentPage}*#{search.pageSize}
+	</select>
+	
+	
+	 <!-- SQL : SELECT ROW Count -->	 
+	 <select  id="getTotalCount"  parameterType="map"	 resultType="int">
+	  	SELECT count(*)
+  		FROM (SELECT t.tran_no, p.prod_no, t.order_data, t.tran_status_code 
+										FROM transaction t, product p, users u 
+										WHERE t.prod_no = p.prod_no 
+										AND t.buyer_id = u.user_id 
+		<if	test="buyerId != null">		AND u.user_id = #{buyerId}     							 		</if> 
+										ORDER BY t.tran_no ) inner_table
+	  </select>
+	
+	
+ </mapper>
